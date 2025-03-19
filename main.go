@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
+	"net"
 	"strings"
 )
 
-const inputFilePath = "messages.txt"
+const port = ":42069"
 
-func getLinesChannel(f io.ReadCloser) <-chan string {
+func getLinesChannel(conn net.Conn) <-chan string {
 	lines := make(chan string)
 	go func() {
-		defer f.Close()
 		defer close(lines)
+		defer conn.Close()
 		currentLineContents := ""
 		for {
 			b := make([]byte, 8)
-			n, err := f.Read(b)
+			n, err := conn.Read(b)
 			if err != nil {
 				if currentLineContents != "" {
 					lines <- currentLineContents
@@ -43,17 +43,26 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 }
 
 func main() {
-	f, err := os.Open(inputFilePath)
+	l, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatalf("could not open %s: %s\n", inputFilePath, err)
+		log.Fatalf("y u no listen: %s", err)
 	}
 
-	fmt.Printf("Reading data from %s\n", inputFilePath)
-	fmt.Println("=====================================")
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Fatalf("y u no assep: %s", err)
+		}
 
-	outChan := getLinesChannel(f)
+		fmt.Printf("listen assep: %v\n", conn.LocalAddr())
+		fmt.Println("=====================================")
 
-	for line := range outChan {
-		fmt.Printf("read: %s\n", line)
+		outChan := getLinesChannel(conn)
+
+		for line := range outChan {
+			fmt.Printf("%s\n", line)
+		}
+		fmt.Println("connection to ", conn.RemoteAddr(), " closed")
 	}
+
 }
