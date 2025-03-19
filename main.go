@@ -11,6 +11,37 @@ import (
 
 const inputFilePath = "messages.txt"
 
+func getLinesChannel(f io.ReadCloser) <-chan string {
+	lines := make(chan string)
+	go func() {
+		defer f.Close()
+		defer close(lines)
+		currentLineContents := ""
+		for {
+			b := make([]byte, 8)
+			n, err := f.Read(b)
+			if err != nil {
+				if currentLineContents != "" {
+					lines <- currentLineContents
+				}
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				fmt.Printf("error: %s\n", err.Error())
+				return
+			}
+			str := string(b[:n])
+			parts := strings.Split(str, "\n")
+			for i := 0; i < len(parts)-1; i++ {
+				lines <- fmt.Sprintf("%s%s", currentLineContents, parts[i])
+				currentLineContents = ""
+			}
+			currentLineContents += parts[len(parts)-1]
+		}
+	}()
+	return lines
+}
+
 func main() {
 	f, err := os.Open(inputFilePath)
 	if err != nil {
@@ -20,27 +51,9 @@ func main() {
 	fmt.Printf("Reading data from %s\n", inputFilePath)
 	fmt.Println("=====================================")
 
-	currentLineContents := ""
-	for {
-		buffer := make([]byte, 8)
-		n, err := f.Read(buffer)
-		if err != nil {
-			if currentLineContents != "" {
-				fmt.Printf("read: %s\n", currentLineContents)
-				currentLineContents = ""
-			}
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			fmt.Printf("error: %s\n", err.Error())
-			break
-		}
-		str := string(buffer[:n])
-		parts := strings.Split(str, "\n")
-		for i := 0; i < len(parts)-1; i++ {
-			fmt.Printf("read: %s%s\n", currentLineContents, parts[i])
-			currentLineContents = ""
-		}
-		currentLineContents += parts[len(parts)-1]
+	outChan := getLinesChannel(f)
+
+	for line := range outChan {
+		fmt.Printf("read: %s\n", line)
 	}
 }
