@@ -11,7 +11,7 @@ import (
 
 const port = ":42069"
 
-func getLinesChannel(conn net.Conn) <-chan string {
+func getLinesChannel(conn io.ReadCloser) <-chan string {
 	lines := make(chan string)
 	go func() {
 		defer close(lines)
@@ -62,7 +62,7 @@ func main() {
 		for line := range outChan {
 			fmt.Printf("%s\n", line)
 		}
-		fmt.Println("connection to ", conn.RemoteAddr(), " closed")
+		fmt.Println("connection to ", conn.RemoteAddr(), "yeeted")
 	}
 
 }
