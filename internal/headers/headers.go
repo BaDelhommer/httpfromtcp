@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 const crlf = "\r\n"
@@ -34,11 +35,37 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 
 	value := bytes.TrimSpace(parts[1])
 	key = strings.TrimSpace(key)
+	key = strings.ToLower(key)
 
-	h.Set(key, string(value))
+	for _, c := range key {
+		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && !isAllowedChar(c) {
+			return 0, false, fmt.Errorf("invalid char in header: %c", c)
+		}
+	}
+
+	_, ok := h[key]
+	if ok {
+		fmt.Println("Before conact: ", h[key])
+		h[key] = h[key] + ", " + string(value)
+	} else {
+		h.Set(key, string(value))
+	}
+
 	return idx + 2, false, nil
 }
 
 func (h Headers) Set(key, value string) {
 	h[key] = value
+}
+
+func isAllowedChar(r rune) bool {
+	allowed := "!#$%&'*+-.^_`|~"
+
+	for _, c := range allowed {
+		if r == c {
+			return true
+		}
+	}
+
+	return false
 }
