@@ -45,6 +45,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("y u no listen: %s", err)
 	}
+	defer l.Close()
+
+	fmt.Println("i listen to", port)
 
 	for {
 		conn, err := l.Accept()
@@ -63,7 +66,5 @@ func main() {
 		fmt.Printf("Request line:\n- Method: %s\n- Target: %s\n- Version: %s\n",
 			request.RequestLine.Method, request.RequestLine.RequestTarget, request.RequestLine.HttpVersion)
 
-		fmt.Println("connection to ", conn.RemoteAddr(), "yeeted")
 	}
-
 }
