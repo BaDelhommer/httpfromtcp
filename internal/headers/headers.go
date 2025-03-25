@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"unicode"
 )
 
 const crlf = "\r\n"
@@ -16,6 +15,8 @@ func NewHeaders() Headers {
 }
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
+	// print the data with crlf encoding
+
 	idx := bytes.Index(data, []byte(crlf))
 	if idx == -1 {
 		return 0, false, nil
@@ -27,7 +28,7 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	}
 
 	parts := bytes.SplitN(data[:idx], []byte(":"), 2)
-	key := string(parts[0])
+	key := strings.ToLower(string(parts[0]))
 
 	if key != strings.TrimRight(key, " ") {
 		return 0, false, fmt.Errorf("invalid header name: %s", key)
@@ -35,42 +36,48 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 
 	value := bytes.TrimSpace(parts[1])
 	key = strings.TrimSpace(key)
-	key = strings.ToLower(key)
-
-	for _, c := range key {
-		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && !isAllowedChar(c) {
-			return 0, false, fmt.Errorf("invalid char in header: %c", c)
-		}
+	if !validTokens([]byte(key)) {
+		return 0, false, fmt.Errorf("invalid header token found: %s", key)
 	}
-
-	_, ok := h[key]
-	if ok {
-		h[key] = h[key] + ", " + string(value)
-	} else {
-		h.Set(key, string(value))
-	}
-
+	h.Set(key, string(value))
 	return idx + 2, false, nil
-}
-
-func (h Headers) Set(key, value string) {
-	h[key] = value
-}
-
-func isAllowedChar(r rune) bool {
-	allowed := "!#$%&'*+-.^_`|~"
-
-	for _, c := range allowed {
-		if r == c {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (h Headers) Get(key string) (string, bool) {
 	key = strings.ToLower(key)
-	val, ok := h[key]
-	return val, ok
+	v, ok := h[key]
+	return v, ok
+}
+
+func (h Headers) Set(key, value string) {
+	key = strings.ToLower(key)
+	v, ok := h[key]
+	if ok {
+		value = strings.Join([]string{
+			v,
+			value,
+		}, ", ")
+	}
+	h[key] = value
+}
+
+func (h Headers) Override(key, value string) {
+	key = strings.ToLower(key)
+	h[key] = value
+}
+
+var tokenChars = []byte{'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'}
+
+// validTokens checks if the data contains only valid tokens
+// or characters that are allowed in a token
+func validTokens(data []byte) bool {
+	for _, c := range data {
+		if !(c >= 'A' && c <= 'Z' ||
+			c >= 'a' && c <= 'z' ||
+			c >= '0' && c <= '9' ||
+			c == '-') {
+			return false
+		}
+	}
+	return true
 }
