@@ -45,7 +45,6 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 
 	_, ok := h[key]
 	if ok {
-		fmt.Println("Before conact: ", h[key])
 		h[key] = h[key] + ", " + string(value)
 	} else {
 		h.Set(key, string(value))
@@ -68,4 +67,10 @@ func isAllowedChar(r rune) bool {
 	}
 
 	return false
+}
+
+func (h Headers) Get(key string) (string, bool) {
+	key = strings.ToLower(key)
+	val, ok := h[key]
+	return val, ok
 }
